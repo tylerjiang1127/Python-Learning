@@ -1,0 +1,202 @@
+import pygame
+import time
+import numpy as np
+from collections import defaultdict
+from random import randint
+
+color_bg = (10,10,10)
+color_grid = (40,40,40)
+color_active = (255,255,255)
+
+width = 60
+height = 60
+
+### in the cells matrix, there are 3 different status: 0-->blank; 1-->fixed brick; 2-->movable brick
+### iterate all cells, if there is no 2 value, means we need to generate a new item on top; if there are 2 values, 
+
+item_init = defaultdict(list)
+mid_point = width//2
+item_init[0] = [[0,mid_point-1],[0,mid_point],[1,mid_point-1],[1,mid_point]] ##Square
+item_init[1] = [[0,mid_point-1],[1,mid_point-1],[2,mid_point-1],[2,mid_point]] ##L-shape 1
+item_init[2] = [[0,mid_point],[1,mid_point],[2,mid_point],[2,mid_point-1]] ##L-shape 2
+item_init[3] = [[0,mid_point-1],[1,mid_point-1],[2,mid_point-1],[3,mid_point-1]] ##Line
+item_init[4] = [[0,mid_point-1],[1,mid_point-1],[1,mid_point],[2,mid_point]] ##Lightning 1
+item_init[5] = [[0,mid_point],[1,mid_point],[1,mid_point-1],[2,mid_point-1]] ##Lightning 2
+
+def init_new_item(screen, cells, size):
+    coordinates = item_init[randint(0, 5)]
+    overlap_ind = 'N'
+    for row, col in coordinates:
+        if cells[row][col] == 1:
+            overlap_ind = 'Y'
+    if overlap_ind == 'N':
+        for row, col in coordinates:
+            cells[row][col] = 2
+            pygame.draw.rect(screen, color_active, (col*size, row*size, size-1, size-1))
+
+def item_move_right(screen, cells, size, item_coordinates):
+    right_wall = 'N'
+    ### this step is to judge whether the falling item hit the ground or bottom bricks
+    for row, col in item_coordinates:
+        if col == width-1 or cells[row][col+1] == 1:
+            right_wall = 'Y'
+
+    for i in range(len(item_coordinates)):
+        row, col = item_coordinates[i][0], item_coordinates[i][1]
+        if right_wall == 'Y': 
+            continue
+        else:
+            cells[row][col] = 0
+            pygame.draw.rect(screen, color_bg, (col*size, row*size, size-1, size-1))
+            item_coordinates[i][1] += 1
+    for row, col in item_coordinates:
+        cells[row][col] = 2
+        pygame.draw.rect(screen, color_active, (col*size, row*size, size-1, size-1))
+
+def update_right(screen, cells, size):
+    movable_item_ind = 0
+    item_coordinates = []
+    for row, col in np.ndindex(cells.shape):
+        color = color_bg
+        if cells[row][col] == 1:
+            color = color_active
+        elif cells[row][col] == 2:
+            movable_item_ind = 1
+            item_coordinates.append([row,col])
+            color = color_active
+            
+        pygame.draw.rect(screen, color, (col*size, row*size, size-1, size-1))
+    if movable_item_ind == 0:
+        init_new_item(screen, cells, 10)
+    else:
+        item_move_right(screen, cells, size, item_coordinates)
+
+def item_move_left(screen, cells, size, item_coordinates):
+    left_wall = 'N'
+    ### this step is to judge whether the falling item hit the ground or bottom bricks
+    for row, col in item_coordinates:
+        if col == 0 or cells[row][col-1] == 1:
+            left_wall = 'Y'
+
+    for i in range(len(item_coordinates)):
+        row, col = item_coordinates[i][0], item_coordinates[i][1]
+        if left_wall == 'Y': 
+            continue
+        else:
+            cells[row][col] = 0
+            pygame.draw.rect(screen, color_bg, (col*size, row*size, size-1, size-1))
+            item_coordinates[i][1] -= 1
+    for row, col in item_coordinates:
+        cells[row][col] = 2
+        pygame.draw.rect(screen, color_active, (col*size, row*size, size-1, size-1))
+
+def update_left(screen, cells, size):
+    movable_item_ind = 0
+    item_coordinates = []
+    for row, col in np.ndindex(cells.shape):
+        color = color_bg
+        if cells[row][col] == 1:
+            color = color_active
+        elif cells[row][col] == 2:
+            movable_item_ind = 1
+            item_coordinates.append([row,col])
+            color = color_active
+            
+        pygame.draw.rect(screen, color, (col*size, row*size, size-1, size-1))
+    if movable_item_ind == 0:
+        init_new_item(screen, cells, 10)
+    else:
+        item_move_left(screen, cells, size, item_coordinates)
+
+def item_fall(screen, cells, size, item_coordinates):
+    fall_status = 'Y'
+    ### this step is to judge whether the falling item hit the ground or bottom bricks
+    for row, col in item_coordinates:
+        if row == height-1 or cells[row+1][col] == 1:
+            fall_status = 'N'
+
+    ### if item is falling, replace new item filling with old one
+    if fall_status == 'Y':
+        for i in range(len(item_coordinates)):
+            row, col = item_coordinates[i][0], item_coordinates[i][1]
+            cells[row][col] = 0
+            pygame.draw.rect(screen, color_bg, (col*size, row*size, size-1, size-1))
+            item_coordinates[i][0] += 1
+        for row, col in item_coordinates:
+            cells[row][col] = 2
+            pygame.draw.rect(screen, color_active, (col*size, row*size, size-1, size-1))
+    elif fall_status == 'N':
+        for row, col in item_coordinates:
+            cells[row][col] = 1
+
+def update_fall(screen, cells, size):
+    movable_item_ind = 0
+    item_coordinates = []
+    for row, col in np.ndindex(cells.shape):
+        color = color_bg
+        if cells[row][col] == 1:
+            color = color_active
+        elif cells[row][col] == 2:
+            movable_item_ind = 1
+            item_coordinates.append([row,col])
+            color = color_active
+            
+        pygame.draw.rect(screen, color, (col*size, row*size, size-1, size-1))
+    if movable_item_ind == 0:
+        init_new_item(screen, cells, 10)
+    else:
+        item_fall(screen, cells, size, item_coordinates)
+
+def main():
+    pygame.init()
+    screen = pygame.display.set_mode((width*10,height*10))
+    
+    
+    cells = np.zeros((height,width))
+    screen.fill(color_grid)
+    for row, col in np.ndindex(cells.shape):
+        pygame.draw.rect(screen, color_bg, (col*10, row*10, 9, 9))
+    
+    pygame.display.flip()
+    pygame.display.update()
+    
+    running = False
+    left_move = False
+    right_move = False
+    
+    while True:
+        keys = pygame.key.get_pressed()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    running = not running
+                    #update(screen, cells, 10)
+                    #pygame.display.update()
+                if event.key == pygame.K_ESCAPE:
+                    cells = np.zeros((height,width))
+                    screen.fill(color_grid)
+                    for row, col in np.ndindex(cells.shape):
+                        pygame.draw.rect(screen, color_bg, (col*10, row*10, 9, 9))
+                    running = False
+                    pygame.display.update()
+
+        screen.fill(color_grid)
+        
+        if running:
+            if keys[pygame.K_LEFT]:
+                update_left(screen, cells, 10)
+                pygame.display.update()
+                pygame.time.delay(100)
+            elif keys[pygame.K_RIGHT]:
+                update_right(screen, cells, 10)
+                pygame.display.update()
+                pygame.time.delay(100)
+            update_fall(screen, cells, 10)
+            pygame.display.update()
+            pygame.time.delay(500)
+                
+if __name__ == '__main__':
+    main()
